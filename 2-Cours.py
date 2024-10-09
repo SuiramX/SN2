@@ -1,22 +1,29 @@
+import json
 # STEP 1 Modélisation des Produits et Composition
-
+#Création de la classe Ingrédient
 class Ingredient:
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, nom):
+        self.nom = nom
 
+#Création de la classe Pizza
 
 class Pizza:
-    def __init__(self, name, price):
-        self.name = name
-        self.price = price
-        self.ingredients = []  # Initialize the ingredients list
+    def __init__(self, nom, prix):
+        self.nom = nom
+        self.prix = prix
+        self.garnitures = []
     
     def add_ingredient(self, ingredient):
-        self.ingredients.append(ingredient)
+        self.garnitures.append(ingredient)
     
-    def afficher_ingredients(self):
-        for ingredient in self.ingredients:
-            print(ingredient.name)
+    def afficher_garnitures(self):
+        for ingredient in self.garnitures:
+            print(ingredient.nom)
+    
+    def __str__(self):
+        garnitures_str = ", ".join([ingredient.nom for ingredient in self.garnitures])
+        return f"Pizza: {self.nom}, Prix: {self.prix} euros, Garnitures: {garnitures_str}"
+
 
 
 
@@ -47,11 +54,11 @@ pepperoni_pizza.add_ingredient(pepperoni)
 #Fonction pour afficher les pizzas, leur taille, leur prix ainsi que leurs ingrédients
 def afficher_pizzas(pizzas):
     for pizza in pizzas:
-        print(f"Name: {pizza.name}", pizza.price)
-        print("Ingredients:")
-        for ingredient in pizza.ingredients:
-            print(f"- {ingredient.name}")
-        print("Available sizes: M, L, XL \n")
+        print(f"nom: {pizza.nom}", pizza.prix)
+        print("garnitures:")
+        for ingredient in pizza.garnitures:
+            print(f"- {ingredient.nom}")
+        print("Available tailles: M, L, XL \n")
         print()  # Add a blank line between pizzas
 
 
@@ -61,35 +68,85 @@ afficher_pizzas(pizzas)
 
 
 
-class Drink:
-    def __init__(self, name, volume, price):
-        self.name = name
+class Boisson:
+    def __init__(self, nom, volume, prix):
+        self.nom = nom
         self.volume = volume
-        self.price = price
+        self.prix = prix
 
-cocacola = Drink("Coca-Cola", 500, 2)
-sprite = Drink("Sprite", 500, 2)
+    def __str__(self):
+        return f"Boisson: {self.nom}, Volume: {self.volume}ml, Prix: {self.prix} euros"
+
+cocacola = Boisson("Coca-Cola", 500, 2)
+sprite = Boisson("Sprite", 500, 2)
 # STEP 2 :  Gestion des Commandes (Agrégation)
 
 lvide=[]
 
 class Order: 
-    def __init__(self, order_id, lvide):
+    def __init__(self, order_id):
         self.order_id = order_id
-        self.products = lvide
+        self.produits = []
     
     def add_product(self, product):
-        self.products.append(product)
+        self.produits.append(product)
     
     def total(self):
         total = 0
-        for product in self.products:
-            total = total + product.price
+        for product in self.produits:
+            total = total + product.prix
         return total
 
-order = Order(1, [])
+order = Order(1)
 order.add_product(margarita)
 order.add_product(sprite)
-print(f"Total order price: {order.total()} euros")
+print(f"Total order prix: {order.total()} euros")
+
 
 # STEP 3 :  Factory et Pattern Matching pour la Création des Produits
+class ProductFactory:
+    def create_product(self, product_type, *args):
+        match product_type:
+            case "Pizza":
+                return self.create_pizza(*args)
+            case "boisson":
+                return self.create_boisson(*args)
+            case _:
+                raise ValueError(f"Unknown product type: {product_type}")
+    
+    def create_pizza(self, nom, prix):
+        pizza = Pizza(nom, prix)
+        return pizza
+    
+    def create_boisson(self, nom, volume, prix):
+        return Boisson(nom, volume, prix)
+
+# Lecture du fichier commandes.json et menu.json
+def load_json(file_path):
+    with open(file_path, 'r') as file:
+        return json.load(file)
+
+menu = load_json('menu.json')
+commandes = load_json('commandes.json')
+
+factory = ProductFactory()
+
+available_boissons = {boisson['nom']: boisson for boisson in menu['boissons']}
+
+# Traitement des commandes
+for commande in commandes:
+    order = Order(commande['commande_id'])
+    
+    for item in commande['items']:
+        if item in available_boissons:
+            boisson_info = available_boissons[item]
+            boisson = factory.create_product("boisson", boisson_info['nom'], boisson_info['volume'], boisson_info['prix'])
+            order.add_product(boisson)
+        else:
+            pizza = factory.create_product("Pizza", item, 12.0)  # Prix par défaut si non fourni
+            order.add_product(pizza)
+    
+    print(f"Total pour la commande {order.order_id}: {order.total()} euros")
+    for produit in order.produits:
+        print(produit)
+    print()  # Ajoute une ligne vide entre les commandes
