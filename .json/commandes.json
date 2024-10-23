@@ -1,0 +1,31 @@
+[
+    {
+        "commande_id": 1,
+        "items": [
+            "Coca-Cola",
+            "Hawa\u00c3\u00afenne"
+        ]
+    },
+    {
+        "commande_id": 2,
+        "items": [
+            "V\u00c3\u00a9g\u00c3\u00a9tarienne",
+            "V\u00c3\u00a9g\u00c3\u00a9tarienne",
+            "Pesto",
+            "Pesto"
+        ]
+    },
+    {
+        "commande_id": 3,
+        "items": [
+            "Pesto"
+        ]
+    },
+    {
+        "commande_id": 4,
+        "items": [
+            "V\u00c3\u00a9g\u00c3\u00a9tarienne",
+            "Sprite"
+        ]
+    }
+]
