@@ -1,0 +1,107 @@
+from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from typing import List, Dict
+from starlette.responses import Response
+from starlette.status import HTTP_201_CREATED
+
+
+app = FastAPI(description="TP5 API")
+
+# Base de données en mémoire pour les utilisateurs et les TODOs
+users_db = {}
+todos_db = {}
+
+class User(BaseModel):
+    username: str
+    password: str
+@app.post("/users")
+def users(item: User):
+    for user in users_list:
+        if user["username"] == item.username:
+            raise HTTPException(status_code=400, detail="Username existe déjà")
+    else :
+        new_user = {"username": item.username, "password": item.password}
+    users_list.append(new_user)
+    return new_user, 201
+users_list = []
+
+class UserResponse(BaseModel):
+    username: str
+    todo_count: int
+
+class Todo(BaseModel):
+    name: str
+    description: str
+    priority: int
+
+class TodoResponse(BaseModel):
+    id: int
+    name: str
+    description: str
+    priority: int
+
+# Fonction pour obtenir l'utilisateur actuel
+def get_current_user(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid token")
+    token = authorization.split(" ")[1]
+    if token != "fake-jwt-token":
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return "user1"  # Utiliser un utilisateur par défaut pour les tests
+
+@app.get("/")
+def root():
+    return {}
+
+@app.get("/miscellaneous/addition")
+async def add(a: float, b: float):
+    # Vérification si les paramètres sont des nombres
+    if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
+        raise HTTPException(status_code=400, detail="Parameters must be numbers")
+
+    result = a + b
+    return JSONResponse(content={"result": result})
+
+@app.post("/token")
+async def authenticate_user(user: User):
+    if user.username not in users_db or users_db[user.username].password != user.password:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    return {"access_token": "fake-jwt-token"}
+
+@app.get("/users/me", response_model=UserResponse)
+async def get_user(username: str = Depends(get_current_user)):
+    return UserResponse(username=username, todo_count=len(todos_db[username]))
+
+@app.post("/users/me/todo", response_model=TodoResponse)
+async def create_todo(todo: Todo, username: str = Depends(get_current_user)):
+    todo_id = len(todos_db[username]) + 1
+    todo_item = TodoResponse(id=todo_id, **todo.dict())
+    todos_db[username].append(todo_item)
+    return todo_item
+
+@app.get("/users/me/todo", response_model=List[TodoResponse])
+async def get_todos(username: str = Depends(get_current_user)):
+    return sorted(todos_db[username], key=lambda x: x.priority)
+
+@app.patch("/users/me/todo/{todo_id}", response_model=TodoResponse)
+async def update_todo(todo_id: int, updated_todo: Todo, username: str = Depends(get_current_user)):
+    for todo in todos_db[username]:
+        if todo.id == todo_id:
+            todo.name = updated_todo.name
+            todo.description = updated_todo.description
+            todo.priority = updated_todo.priority
+            return todo
+    raise HTTPException(status_code=404, detail="Todo not found")
+
+@app.delete("/users/me/todo/{todo_id}", status_code=204)
+async def delete_todo(todo_id: int, username: str = Depends(get_current_user)):
+    for i, todo in enumerate(todos_db[username]):
+        if todo.id == todo_id:
+            del todos_db[username][i]
+            return
+    raise HTTPException(status_code=404, detail="Todo not found")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)
